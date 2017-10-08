@@ -7,11 +7,16 @@ import android.provider.MediaStore;
 import android.provider.MediaStore.Audio.AudioColumns;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 import com.kabouzeid.gramophone.model.Song;
 import com.kabouzeid.gramophone.provider.BlacklistStore;
 import com.kabouzeid.gramophone.util.PreferenceUtil;
 
+import org.jaudiotagger.audio.AudioFileIO;
+import org.jaudiotagger.tag.FieldKey;
+
+import java.io.File;
 import java.util.ArrayList;
 
 /**
@@ -71,7 +76,32 @@ public class SongLoader {
         final int id = cursor.getInt(0);
         final String title = cursor.getString(1);
         final int trackNumber = cursor.getInt(2);
-        final int year = cursor.getInt(3);
+
+        // Dirty fix for the album year being '0' for FLAC files
+        int tmp;
+        if(cursor.getInt(3) != 0)
+        {
+            tmp = cursor.getInt(3);
+        }
+        else
+        {
+            String tagYear = "0";
+            try {
+                tagYear = AudioFileIO.read(new File(cursor.getString(5))).getTagOrCreateAndSetDefault().getFirst(FieldKey.YEAR);
+            } catch (Exception e) {
+                Log.e(SongLoader.class.getSimpleName(), "Could not read audio file " + cursor.getString(5), e);
+            }
+            if (tagYear.matches("\\d+"))
+            {
+                tmp = Integer.parseInt(tagYear);
+            }
+            else
+            {
+                tmp = 0;
+            }
+        }
+        final int year = tmp;
+
         final long duration = cursor.getLong(4);
         final String data = cursor.getString(5);
         final long dateModified = cursor.getLong(6);
